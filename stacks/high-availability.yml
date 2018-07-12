@@ -1,0 +1,48 @@
+version: '2'
+
+project: 'gkube'
+
+base_box: 'akx/centos'
+
+cache: true
+
+ip_end: 70
+
+domain: akxtest.com
+
+control_plane:
+  master:
+    prefix: 'master'
+    replicas: 1
+    memory: 2048
+    cpus: 4
+  node:
+    prefix: 'node'
+    replicas: 3
+    memory: 1024
+    cpus: 2
+  proxy:
+    prefix: 'proxy'
+    replicas: 2
+    memory: 512
+    cpus: 2
+    external: true
+  etcd:
+    prefix: 'etcd'
+    replicas: 3
+    memory: 512
+    cpus: 2
+    external: true
+  gluster:
+    prefix: 'gluster'
+    replicas: 3
+    memory: 512
+    cpus: 2
+    external: true
+    storage:
+      - name: 'SATA Controller'
+        type: 'sata'
+        disks:
+          prefix: 'disk'
+          count: 3
+          size: 60

@@ -1,0 +1,15 @@
+- name: installing lshw for disk discovery
+  yum:
+   name: lshw
+   state: present
+   disable_gpg_check: yes
+   update_cache: yes
+    
+- name: get a list of the bricks on the controller we used
+  shell: "lshw -short -class disk | grep $(lshw -short -class storage | grep '{{ (stack | json_query(controller_query))[0] }}' | awk '{ print $1}') | awk '{ print $2}'"
+  register: brick_disks
+  vars:
+    controller_query: "boxes[?name=='{{ inventory_hostname }}'].storage[0].name"
+    
+- debug:
+    msg: "{{ brick_disks.stdout_lines | to_nice_json() }}"

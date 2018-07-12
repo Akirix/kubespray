@@ -94,3 +94,10 @@ target/
 # virtualenv
 venv/
 ENV/
+
+#ignored by kelly
+.settings
+.project
+*.rexpfd
+logs
+my_stack.yml

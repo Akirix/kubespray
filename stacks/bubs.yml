@@ -1,0 +1,47 @@
+version: '2'
+
+project: 'bubs'
+
+base_box: 'akx/centos'
+
+cache: true
+
+ip_end: 70
+
+control_plane:
+  master:
+    prefix: 'senior'
+    replicas: 1
+    memory: 5120
+    cpus: 4
+  node:
+    prefix: 'junior'
+    replicas: 3
+    memory: 1024
+    cpus: 2
+    ha: true
+  proxy:
+    prefix: 'proxy'
+    replicas: 2
+    memory: 1024
+    cpus: 2
+    ha: false
+  etcd:
+    prefix: 'etcd'
+    replicas: 3
+    memory: 1024
+    cpus: 2
+    ha: false
+  gluster:
+    prefix: 'gluster'
+    replicas: 3
+    memory: 1024
+    cpus: 2
+    ha: false
+    disks:
+      prefix: 'disk'
+      controller: 
+        name: 'SATA Controller'
+        type: 'sata'
+      count: 3
+      size: 60
