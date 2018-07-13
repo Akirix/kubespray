@@ -9,6 +9,12 @@ require 'fileutils'
 FileUtils::mkdir_p './vagrant'
 FileUtils::mkdir_p './logs'
 
+KUBE_STACK = ENV['KUBE_STACK'] ? ENV['KUBE_STACK'] : $kube_stack ? $kube_stack : "hypercluster"
+$local_release_dir = "/vagrant/temp"
+STACK = YAML.load_file("stacks/#{KUBE_STACK}.yml")
+inventory_name = STACK.key?('inventory') ? STACK['inventory'] : KUBE_STACK
+$inventory = File.join(File.dirname(__FILE__), "inventory", inventory_name)
+
 Vagrant.require_version ">= 2.0.0"
 
 CONFIG = File.join(File.dirname(__FILE__), "vagrant/config.rb")
@@ -29,9 +35,6 @@ SUPPORTED_OS = {
 }
 
 GUEST_ADDITIONS_ISO = ENV['GUEST_ADDITIONS_ISO'] ? ENV['GUEST_ADDITIONS_ISO'] : $guest_additions_iso ? $guest_additions_iso : nil
-
-STACK_FILE = ENV['KUBE_STACK'] ? ENV['KUBE_STACK'] : $kube_stack ? $kube_stack : "hyperconverged"
-STACK = YAML.load_file("stacks/#{STACK_FILE}.yml")
 
 # the project name
 STACK['project'] = 'kubernetes' if !STACK.key?('project')
@@ -71,8 +74,6 @@ if not plugins_to_install.empty?
     abort "Installation of one or more plugins has failed. Aborting."
   end
 end
-
-$inventory = File.join(File.dirname(__FILE__), "inventory", "sample") if ! $inventory
 
 # if $inventory has a hosts file use it, otherwise copy over vars etc
 # to where vagrant expects dynamic inventory to be.
@@ -217,11 +218,6 @@ end # end control plane loop
 # make sure all nodes and master is a kubelet
 STACK['groups']['kubelet'] = [STACK['groups']['kube-node'],STACK['groups']['kube-master']].flatten
 
-
-File.open("my_stack.yml", "r+") do |file|
-  file.write({'stack' => STACK}.to_yaml)
-end
-
 # base configuration for all of the boxes
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   
@@ -236,9 +232,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.synced_folder ".", "/vagrant", disabled: true
   
   # this makes the public network reachable from a remote system
-  #config.vm.provision "shell",
-  #  run: "always",
-  #  inline: "sudo route add default gw #{PUBLIC_GATEWAY} eth2"
+  config.vm.provision "shell",
+    run: "always",
+    inline: "sudo route add default gw #{PUBLIC_GATEWAY} eth2"
     
   # initialize as true so first node becomes primary node
   STACK['boxes'].each do |box|
@@ -400,27 +396,33 @@ end
 
 def define_provisioner(vm, box)
   
+  stack_var_file = File.join(File.dirname(__FILE__), "vagrant/stack.yml")
+  File.open(stack_var_file, "w") do |file|
+    file.write({
+      "vagrant_home"  => ENV['VAGRANT_HOME'] ? ENV['VAGRANT_HOME'] : "~/.vagrant.d",
+      "vagrant_cache" => ENV['VAGRANT_CACHE'] ? ENV['VAGRANT_CACHE'] : STACK['cache'],
+      "vagrant_master"  => box['private_ip'],
+      "vagrant_master_name" => box['name'],
+      "base_domain" => STACK['domain'],
+      "disable_swap" => true,
+      "stack" => STACK,
+    }.to_yaml)
+  end
+  
   num_instances = STACK['control_plane']['kube-node']['replicas']
   
   # View the documentation for the provider you're using for more
   # information on available options.
   vm.provision :ansible do |ansible|
     ansible.playbook = "cluster-test.yml"
-    ansible.verbose = true
+    ansible.verbose = 'vvvv'
     ansible.become = true
     ansible.limit = "all,localhost"
     ansible.host_key_checking = false
     ansible.raw_arguments = ["--forks=#{num_instances}", "--flush-cache"]
     ansible.host_vars = $host_vars
     ansible.groups = STACK['groups']
-    ansible.extra_vars = {
-        "vagrant_home"  => ENV['VAGRANT_HOME'] ? ENV['VAGRANT_HOME'] : "~/.vagrant.d",
-        "vagrant_cache" => ENV['VAGRANT_CACHE'] ? ENV['VAGRANT_CACHE'] : STACK['cache'],
-        "vagrant_master"  => box['private_ip'],
-        "vagrant_master_name" => box['name'],
-        "disk_controller" => 'SATA Controller',
-        "base_domain" => STACK['domain']
-    }
+    ansible.extra_vars = stack_var_file
     if File.exist?(File.join(File.dirname($inventory), "hosts"))
       ansible.inventory_path = $inventory
     end

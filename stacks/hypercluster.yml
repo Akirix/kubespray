@@ -1,0 +1,51 @@
+version: '2'
+
+project: 'spray'
+
+base_os: 'centos'
+
+cache: true
+
+ip_end: 30
+
+domain: akxtest.com
+
+inventory: hypercluster
+
+control_plane:
+  kube-master:
+    prefix: 'king'
+    description: "The master node which controls kubernetes"
+    replicas: 1
+    memory: 3072
+    cpus: 4
+    os: 'centos'
+    volumes:
+      - src: ./vagrant
+        dest: /vagrant
+    ports:
+      - name: 'docker'
+        expose: 2375
+  kube-node:
+    prefix: 'pauper'
+    description: 'A kubernetes node also named a kubelet.'
+    replicas: 3
+    memory: 2048
+    cpus: 2
+    ports:
+      - name: 'docker'
+        expose: 2375
+    storage:
+      - name: 'SATA Controller'
+        type: 'sata'
+        disks:
+          prefix: 'disk'
+          count: 3
+          size: 60
+  proxy:
+    external: false
+  etcd:
+    external: false
+  gluster:
+    external: false
+    

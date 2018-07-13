@@ -13,3 +13,9 @@
     
 - debug:
     msg: "{{ brick_disks.stdout_lines | to_nice_json() }}"
+    
+- debug:
+    msg: "here is an extra var: {{ vagrant_master_name }}"
+    
+- debug:
+    msg: "here is the role param: {{ something }}"

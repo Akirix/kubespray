@@ -99,5 +99,6 @@ ENV/
 .settings
 .project
 *.rexpfd
+*.rimpfd
 logs
 my_stack.yml
